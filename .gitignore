@@ -16,3 +16,6 @@ Thumbs.db
 
 # Ignore .csv files
 *.csv
+
+# Ignore .sql files
+*.sql
