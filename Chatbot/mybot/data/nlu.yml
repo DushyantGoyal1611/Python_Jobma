@@ -1,0 +1,131 @@
+version: "3.1"
+
+nlu:
+- intent: greet
+  examples: |
+    - hey
+    - hey alfred
+    - hello
+    - hello alfred
+    - hi
+    - hi alfred
+    - hello there
+    - hello there alfred
+    - good morning
+    - good morning alfred
+    - morning alfred
+    - morning
+    - good evening
+    - good evening alfred
+    - moin
+    - moin alfred
+    - hey there
+    - hey there alfred
+    - let's go
+    - let's go alfred
+    - hey dude
+    - goodmorning
+    - goodevening
+    - good afternoon
+    - good afternoon alfred
+
+- intent: goodbye
+  examples: |
+    - cu
+    - cu alfred
+    - good by
+    - good by alfred
+    - cee you later
+    - cee you later alfred
+    - good night
+    - good night alfred
+    - bye
+    - bye alfred
+    - goodbye
+    - goodbye alfred
+    - have a nice day
+    - have a nice day alfred
+    - see you around
+    - see you around alfred
+    - bye bye
+    - bye bye alfred
+    - see you later
+    - see you later alfred
+
+- intent: affirm
+  examples: |
+    - yes
+    - y
+    - indeed
+    - of course
+    - that sounds good
+    - correct
+
+- intent: deny
+  examples: |
+    - no
+    - n
+    - never
+    - I don't think so
+    - don't like that
+    - no way
+    - not really
+
+- intent: mood_great
+  examples: |
+    - perfect
+    - great
+    - amazing
+    - feeling like a king
+    - wonderful
+    - I am feeling very good
+    - I am great
+    - I am amazing
+    - I am going to save the world
+    - super stoked
+    - extremely good
+    - so so perfect
+    - so good
+    - so perfect
+
+- intent: mood_unhappy
+  examples: |
+    - my day was horrible
+    - I am sad
+    - I don't feel very well
+    - I am disappointed
+    - super sad
+    - I'm so sad
+    - sad
+    - very sad
+    - unhappy
+    - not good
+    - not very good
+    - extremly sad
+    - so saad
+    - so sad
+
+- intent: bot_challenge
+  examples: |
+    - are you a bot?
+    - are you a human?
+    - am I talking to a bot?
+    - am I talking to a human?
+
+- intent: check_weather
+  examples: |
+    - what's the weather today?
+    - Today's weather
+    - Weather in Faridabad
+    - Weather of Faridabad
+    - Will it rain today?
+    - Would i need umbrella?
+
+- intent: set_reminder
+  examples: |
+    - Remind me to have dinner at 9 PM
+    - Remind me to have lunch at 1 PM
+    - Remind me to have breakfast at 9 AM
+    - Wake me up at 7 AM
+
+    

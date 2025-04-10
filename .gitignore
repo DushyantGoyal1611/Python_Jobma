@@ -19,3 +19,5 @@ Thumbs.db
 
 # Ignore .sql files
 *.sql
+
+chatenv
