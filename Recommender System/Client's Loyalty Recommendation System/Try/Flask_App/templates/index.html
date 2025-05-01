@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Client's Details Form</title>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 100vw;
+            height: 105vh;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 {
+            text-align: center;
+            color: #343a40;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        .form-group {
+            width: 48%;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+        }
+
+        label {
+            font-weight: 600;
+        }
+
+        .form-control {
+            width: 90%;
+            display: block;
+        }
+
+        .btn-primary {
+            width: 50%;
+            padding: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        #result {
+            margin-top: 30px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Employer Preference Form</h2>
+        <form action="/predict" method="POST">
+            <div class="grid-container">
+                <!-- Existing Fields -->
+
+                <!-- New Fields -->
+                <div class="form-group">
+                    <label>Is Premium?</label>
+                    <select class="form-control" name="is_premium" required>
+                        <option value="" disabled selected>Select</option>
+                        <option value="0">Yes</option>
+                        <option value="1">No</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Subscription Status:</label>
+                    <select class="form-control" name="subscription_status" required>
+                        <option value="" disabled selected>Select</option>
+                        <option value="0">Running</option>
+                        <option value="1">Paused by Admin</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Company Size:</label>
+                    <select class="form-control" name="company_size" required>
+                        <option value="" disabled selected>Select</option>
+                        <option value="1-25">1-25</option>
+                        <option value="26-100">26-100</option>
+                        <option value="101-500">101-500</option>
+                        <option value="500-1000">500-1000</option>
+                        <option value="More than 1000">More than 1000</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Total Sub Users:</label>
+                    <input type="number" class="form-control" name="total_sub" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Is Unlimited?</label>
+                    <select class="form-control" name="is_unlimited" required>
+                        <option value="" disabled selected>Select</option>
+                        <option value="0">Yes</option>
+                        <option value="1">No</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Subscription Amount (in dollars):</label>
+                    <input type="number" class="form-control" name="subscription_amount_in_dollars" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Number of Subscriptions:</label>
+                    <input type="number" class="form-control" name="number_of_subscriptions" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Number of Invitations:</label>
+                    <input type="number" class="form-control" name="number_of_invitations" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Jobs Posted:</label>
+                    <input type="number" class="form-control" name="job_posted" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Number of Kits:</label>
+                    <input type="number" class="form-control" name="number_of_kits" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Number of Recorded Interviews:</label>
+                    <input type="number" class="form-control" name="number_of_recorded_interviews" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Number of Live Interviews:</label>
+                    <input type="number" class="form-control" name="number_of_live_interviews" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Days Since Last Login:</label>
+                    <select class="form-control" name="days_since_last_login" required>
+                        <option value="" disabled selected>Select</option>
+                        <option value="Less than 1 Week">Less than 1 Week</option>
+                        <option value="1-4 Weeks">1-4 Weeks</option>
+                        <option value="1-3 Months">1-3 Months</option>
+                        <option value="3-6 Months">3-6 Months</option>
+                        <option value="6-12 Months">6-12 Months</option>
+                        <option value="More than 1 Year">More than 1 Year</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <div style="display: flex; justify-content: center;">
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+        </form>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.querySelector("form").addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const submitButton = this.querySelector("button[type='submit']");
+            submitButton.disabled = true;
+            submitButton.textContent = "Submitting...";
+
+            let formData = new FormData(this);
+            let jsonData = {};
+
+            formData.forEach((value, key) => {
+                // Convert numeric-looking values to numbers (int or float)
+                if (!isNaN(value) && value.trim() !== "") {
+                    jsonData[key] = Number(value);
+                } else {
+                    jsonData[key] = value;
+                }
+            });
+
+            fetch("/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(jsonData)
+            })
+                .then(response => response.json())
+                // .then(data => {
+                //     let resultDiv = document.getElementById("result");
+                //     resultDiv.innerHTML = `<strong>Prediction Result:</strong> ${JSON.stringify(data, null, 2)}`;
+                //     resultDiv.style.display = "block";
+                // })
+                .then(data => {
+                    let resultDiv = document.getElementById("result");
+                    let recommendations = data.recommendations;
+
+                    if (!recommendations || recommendations.length === 0) {
+                        resultDiv.innerHTML = "<strong>No recommendations found.</strong>";
+                        return;
+                    }
+
+                    let tableHTML = `
+                        <h3 style="margin-top: 30px;">Top Recommendations</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                            <thead>
+                                <tr>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Catcher ID</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Company Size</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Login Gap</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Premium</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Unlimited</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Subs</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Invites</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Live</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Recorded</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Amount ($)</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Similarity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    recommendations.forEach(rec => {
+                        tableHTML += `
+                    <tr>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.jobma_catcher_id}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.company_size}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.days_since_last_login}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.is_premium}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.is_unlimited}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_subscriptions}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_invitations}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_live_interviews}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_recorded_interviews}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.subscription_amount_in_dollars.toFixed(2)}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">${(rec.similarity * 100).toFixed(2)}%</td>
+                    </tr>
+                `;
+                    });
+
+                    tableHTML += `</tbody></table>`;
+                    resultDiv.innerHTML = tableHTML;
+                    resultDiv.style.display = "block";
+                })
+
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("An error occurred. Please try again.");
+                })
+                .finally(() => {
+                    submitButton.disabled = false;
+                    submitButton.textContent = "Submit";
+                });
+        });
+
+    </script>
+
+</body>
+
+</html>

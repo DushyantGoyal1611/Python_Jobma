@@ -73,7 +73,7 @@ def ordinal_encoder(df):
 log_cols = [
     'total_sub',
     'subscription_amount_in_dollars',
-    'number_of_subscriptions'
+    'number_of_subscriptions',
     'number_of_invitations',
     'job_posted',
     'number_of_kits',
@@ -100,6 +100,13 @@ def load_pickle(file_path):
         return pickle.load(f) 
 
 MODEL_PATH = "ClientLoyaltyRecommender_model.pth"
+X_TENSOR_PATH = "X_tensor.pkl"
+
+X_tensor = load_pickle(X_TENSOR_PATH)
+
+df = pd.read_csv('experiment_data1.csv')
+df.drop('jobma_catcher_id', axis=1, inplace=True)
+compare_df = pd.read_csv('experiment_data1.csv')
 
 class AutoEncoder(nn.Module):
     def __init__(self, input_shape):
@@ -132,11 +139,17 @@ class AutoEncoder(nn.Module):
         decoded = self.decoder(encoded)
         return encoded, decoded
     
-model = AutoEncoder(13)
+input_shape = df.shape[1]    
+model = AutoEncoder(input_shape)
 
 # Load model
 model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
 model.eval()
+
+with torch.no_grad():
+    encoder, _ = model(X_tensor)
+
+latent_np = encoder.cpu().numpy()
 
 # Load Pipeline
 with open("pipeline.pkl", "rb") as pipeline_file:
@@ -187,25 +200,8 @@ def predict():
 
     data = request.get_json()
     try:
-        # Convert JSON to DataFrame
-        input_df = pd.DataFrame([data])
-
-        # Apply preprocessing
-        processed_input = pipeline.transform(input_df)
-          
-        # Convert to PyTorch tensor
-        inputs = torch.tensor(processed_input, dtype=torch.float32)
-
-        with torch.no_grad():
-            scores = F.cosine_similarity(inputs, X_test_tensor)
-
-        ranking_df = pd.DataFrame({
-            'id' : X_test_index,
-            'score': [round(float(s), 2) for s in scores.numpy()]
-        })    
-
-        ranked_candidates = ranking_df.sort_values(by='score', ascending=False).head(5)
-        recommendations = ranked_candidates.to_dict(orient='records')
+        recommended_df = recommend(data, model, latent_embeddings=latent_np, compare_df=compare_df, pipeline=pipeline, top_k=5)
+        recommendations = recommended_df.to_dict(orient='records')
 
         return jsonify({"recommendations": recommendations})
 
