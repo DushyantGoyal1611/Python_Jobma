@@ -23,6 +23,7 @@
             box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
+            overflow-y: auto;
         }
 
         h2 {
@@ -35,16 +36,10 @@
             grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             flex-grow: 1;
-            overflow: hidden;
         }
 
         .form-group {
-            width: 48%;
             margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
         }
 
         label {
@@ -52,13 +47,12 @@
         }
 
         .form-control {
-            width: 90%;
-            display: block;
+            width: 100%;
+            padding: 6px;
         }
 
         .btn-primary {
-            width: 50%;
-            padding: 10px;
+            padding: 10px 20px;
             font-size: 16px;
             font-weight: bold;
             background-color: #007bff;
@@ -81,17 +75,23 @@
 <body>
     <div class="container">
         <h2>Employer Preference Form</h2>
-        <form action="/predict" method="POST">
-            <div class="grid-container">
-                <!-- Existing Fields -->
 
-                <!-- New Fields -->
+        <form id="clientForm">
+            <!-- Jobma Catcher ID -->
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                <label for="jobma_catcher_id">Jobma Catcher ID:</label>
+                <input type="text" class="form-control" id="jobma_catcher_id" name="jobma_catcher_id">
+                <button type="button" class="btn-primary" onclick="fetchClientData()">Fetch</button>
+            </div>
+
+            <div class="grid-container">
+                <!-- All other fields -->
                 <div class="form-group">
                     <label>Is Premium?</label>
                     <select class="form-control" name="is_premium" required>
                         <option value="" disabled selected>Select</option>
-                        <option value="0">Yes</option>
-                        <option value="1">No</option>
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
                     </select>
                 </div>
 
@@ -125,8 +125,8 @@
                     <label>Is Unlimited?</label>
                     <select class="form-control" name="is_unlimited" required>
                         <option value="" disabled selected>Select</option>
-                        <option value="0">Yes</option>
-                        <option value="1">No</option>
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
                     </select>
                 </div>
 
@@ -177,11 +177,10 @@
                         <option value="More than 1 Year">More than 1 Year</option>
                     </select>
                 </div>
-
             </div>
 
-            <div style="display: flex; justify-content: center;">
-                <button type="submit" class="btn btn-primary">Submit</button>
+            <div style="display: flex; justify-content: center; margin-top: 20px;">
+                <button type="submit" class="btn-primary">Submit</button>
             </div>
         </form>
 
@@ -189,7 +188,33 @@
     </div>
 
     <script>
-        document.querySelector("form").addEventListener("submit", function (event) {
+        function fetchClientData() {
+            const id = document.getElementById("jobma_catcher_id").value;
+            if (!id) {
+                alert("Please enter a Jobma Catcher ID.");
+                return;
+            }
+
+            fetch(`/fetch_client?id=${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data || Object.keys(data).length === 0) {
+                        alert("No data found for this ID.");
+                        return;
+                    }
+
+                    for (const [key, value] of Object.entries(data)) {
+                        const input = document.querySelector(`[name="${key}"]`);
+                        if (input) input.value = value;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching data:", error);
+                    alert("Failed to fetch data.");
+                });
+        }
+
+        document.getElementById("clientForm").addEventListener("submit", function (event) {
             event.preventDefault();
 
             const submitButton = this.querySelector("button[type='submit']");
@@ -200,7 +225,6 @@
             let jsonData = {};
 
             formData.forEach((value, key) => {
-                // Convert numeric-looking values to numbers (int or float)
                 if (!isNaN(value) && value.trim() !== "") {
                     jsonData[key] = Number(value);
                 } else {
@@ -214,11 +238,6 @@
                 body: JSON.stringify(jsonData)
             })
                 .then(response => response.json())
-                // .then(data => {
-                //     let resultDiv = document.getElementById("result");
-                //     resultDiv.innerHTML = `<strong>Prediction Result:</strong> ${JSON.stringify(data, null, 2)}`;
-                //     resultDiv.style.display = "block";
-                // })
                 .then(data => {
                     let resultDiv = document.getElementById("result");
                     let recommendations = data.recommendations;
@@ -234,15 +253,19 @@
                             <thead>
                                 <tr>
                                     <th style="border: 1px solid #ccc; padding: 8px;">Catcher ID</th>
-                                    <th style="border: 1px solid #ccc; padding: 8px;">Company Size</th>
-                                    <th style="border: 1px solid #ccc; padding: 8px;">Login Gap</th>
                                     <th style="border: 1px solid #ccc; padding: 8px;">Premium</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Subscription Status</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Company Size</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Total Subs</th>
                                     <th style="border: 1px solid #ccc; padding: 8px;">Unlimited</th>
-                                    <th style="border: 1px solid #ccc; padding: 8px;">Subs</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Amount ($)</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">No. of Subs</th>
                                     <th style="border: 1px solid #ccc; padding: 8px;">Invites</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Job Posted</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Kits</th>
                                     <th style="border: 1px solid #ccc; padding: 8px;">Live</th>
                                     <th style="border: 1px solid #ccc; padding: 8px;">Recorded</th>
-                                    <th style="border: 1px solid #ccc; padding: 8px;">Amount ($)</th>
+                                    <th style="border: 1px solid #ccc; padding: 8px;">Login Gap</th>
                                     <th style="border: 1px solid #ccc; padding: 8px;">Similarity</th>
                                 </tr>
                             </thead>
@@ -251,27 +274,30 @@
 
                     recommendations.forEach(rec => {
                         tableHTML += `
-                    <tr>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.jobma_catcher_id}</td>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.company_size}</td>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.days_since_last_login}</td>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.is_premium}</td>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.is_unlimited}</td>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_subscriptions}</td>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_invitations}</td>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_live_interviews}</td>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_recorded_interviews}</td>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${rec.subscription_amount_in_dollars.toFixed(2)}</td>
-                        <td style="border: 1px solid #ccc; padding: 8px;">${(rec.similarity * 100).toFixed(2)}%</td>
-                    </tr>
-                `;
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.jobma_catcher_id}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.is_premium}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.subscription_status}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.company_size}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.total_sub}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.is_unlimited}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.subscription_amount_in_dollars.toFixed(2)}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_subscriptions}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_invitations}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.job_posted}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_kits}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_live_interviews}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.number_of_recorded_interviews}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${rec.days_since_last_login}</td>
+                            <td style="border: 1px solid #ccc; padding: 8px;">${(rec.similarity * 100).toFixed(2)}%</td>
+                        </tr>
+                    `;
                     });
 
                     tableHTML += `</tbody></table>`;
                     resultDiv.innerHTML = tableHTML;
                     resultDiv.style.display = "block";
                 })
-
                 .catch(error => {
                     console.error("Error:", error);
                     alert("An error occurred. Please try again.");
@@ -281,9 +307,7 @@
                     submitButton.textContent = "Submit";
                 });
         });
-
     </script>
-
 </body>
 
 </html>
