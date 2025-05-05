@@ -21,3 +21,5 @@ Thumbs.db
 *.sql
 
 chatenv
+
+.env
