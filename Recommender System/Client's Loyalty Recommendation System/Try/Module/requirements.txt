@@ -1,0 +1,7 @@
+pandas
+numpy
+sqlalchemy
+python-dotenv
+pymysql
+torch
+scikit-learn

@@ -21,5 +21,6 @@ Thumbs.db
 *.sql
 
 chatenv
-
+myenv
+venv
 .env
