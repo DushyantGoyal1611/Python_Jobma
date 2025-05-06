@@ -4,17 +4,14 @@ import numpy as np
 from sqlalchemy import create_engine
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
-
 # Torch
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
-
 # Data Encoding and Scaling
 from sklearn.preprocessing import OrdinalEncoder, StandardScaler, FunctionTransformer
 from sklearn.base import BaseEstimator, TransformerMixin
-
 # Pipeline
 from sklearn.pipeline import Pipeline
 
@@ -44,16 +41,13 @@ login_df = pd.read_sql('Select * FROM jobma_login',con=engine)  # Done (To Find 
 
 # catcher_df
 def fetching_catcher_df(catcher_df):
-    sub_counts = catcher_df[catcher_df['jobma_catcher_parent'] != 0]['jobma_catcher_parent'].value_counts()
-    parents_df = catcher_df[catcher_df['jobma_catcher_parent'] == 0].copy()
-    parents_df['total_sub'] = parents_df['jobma_catcher_id'].map(sub_counts).fillna(0).astype(int)
-    parents_df = parents_df[['jobma_catcher_id', 'is_premium', 'subscription_status', 'company_size', 'total_sub']]
-    parents_df.drop(parents_df[parents_df['subscription_status'] == '0'].index, inplace=True)
-    parents_df['subscription_status'] = parents_df['subscription_status'].replace({'1':0, '2':1})
-    parents_df.drop(parents_df[parents_df['is_premium'] == ''].index, inplace=True)
-    parents_df['is_premium'] = parents_df['is_premium'].replace({'0':0, '1':1})
+    catcher_df = catcher_df[['jobma_catcher_id', 'is_premium', 'jobma_catcher_parent', 'jobma_verified', 'subscription_status', 'company_size']]
+    catcher_df['jobma_verified'] = catcher_df['jobma_verified'].replace({'0':0, '1':1})
+    catcher_df.drop(catcher_df[catcher_df['is_premium'] == ''].index, inplace=True)
+    catcher_df['is_premium'] = catcher_df['is_premium'].replace({'0':0, '1':1})
+    catcher_df['subscription_status'] = catcher_df['subscription_status'].replace({'0':0, '1':1, '2':0})
 
-    return parents_df
+    return catcher_df
 
 # wallet_df
 def fetching_wallet_df(wallet_df):
@@ -96,16 +90,17 @@ def fetching_login_df(login_df):
 
     return login_df
 
+# Fetching Features
 def fetching_features(invitation_df, job_posting_df, kit_df, recorded_interview_df, live_interview_df):
     for df in [invitation_df, job_posting_df, kit_df, recorded_interview_df, live_interview_df]:
         if 'catcher_id' in df.columns:
             df.rename(columns={'catcher_id': 'jobma_catcher_id'}, inplace=True)
 
-    invitation_df['number_of_invitations'] = invitation_df['jobma_catcher_id'].map(invitation_df['jobma_catcher_id'].value_counts())
-    job_posting_df['job_posted'] = job_posting_df['jobma_catcher_id'].map(job_posting_df['jobma_catcher_id'].value_counts())
-    kit_df['number_of_kits'] = kit_df['jobma_catcher_id'].map(kit_df['jobma_catcher_id'].value_counts())
-    recorded_interview_df['number_of_recorded_interviews'] = recorded_interview_df['jobma_catcher_id'].map(recorded_interview_df['jobma_catcher_id'].value_counts())
-    live_interview_df['number_of_live_interviews'] = live_interview_df['jobma_catcher_id'].map(live_interview_df['jobma_catcher_id'].value_counts())
+    invitation_df['number_of_invitations'] = invitation_df['jobma_catcher_id'].map(invitation_df['jobma_catcher_id'].value_counts()).astype(int)
+    job_posting_df['job_posted'] = job_posting_df['jobma_catcher_id'].map(job_posting_df['jobma_catcher_id'].value_counts()).astype(int)
+    kit_df['number_of_kits'] = kit_df['jobma_catcher_id'].map(kit_df['jobma_catcher_id'].value_counts()).astype(int)
+    recorded_interview_df['number_of_recorded_interviews'] = recorded_interview_df['jobma_catcher_id'].map(recorded_interview_df['jobma_catcher_id'].value_counts()).astype(int)
+    live_interview_df['number_of_live_interviews'] = live_interview_df['jobma_catcher_id'].map(live_interview_df['jobma_catcher_id'].value_counts()).astype(int)    
 
     invitation_df = invitation_df[['jobma_catcher_id', 'number_of_invitations']].drop_duplicates()
     job_posting_df = job_posting_df[['jobma_catcher_id', 'job_posted']].drop_duplicates()
@@ -115,8 +110,9 @@ def fetching_features(invitation_df, job_posting_df, kit_df, recorded_interview_
 
     return invitation_df, job_posting_df, kit_df, recorded_interview_df, live_interview_df
 
-def merging_df(parents_df, wallet_df, subscription_df, invitation_df, job_posting_df, kit_df, recorded_interview_df, live_interview_df, login_df):
-    final_df = parents_df.copy()
+# Merging DataFrames
+def merging_df(catcher_df, wallet_df, subscription_df, invitation_df, job_posting_df, kit_df, recorded_interview_df, live_interview_df, login_df):
+    final_df = catcher_df.copy()
 
     # Left join each table one by one
     final_df = final_df.merge(wallet_df, on='jobma_catcher_id', how='left')
@@ -129,21 +125,64 @@ def merging_df(parents_df, wallet_df, subscription_df, invitation_df, job_postin
     final_df = final_df.merge(login_df, on='jobma_catcher_id', how='left')
     final_df.drop_duplicates(inplace=True)
 
-    compare_df = final_df.copy()
-    final_df.drop('jobma_catcher_id', axis=1, inplace=True)
+    # For Total Sub
+    sub_counts = final_df[final_df['jobma_catcher_parent'] != 0].groupby('jobma_catcher_parent').size()
+    final_df['total_sub'] = final_df['jobma_catcher_id'].map(sub_counts).fillna(0).astype(int)
 
-    print(f"Final merged df shape is {final_df.shape}")
+    # For Kits
+    sub_kits_sum = final_df[final_df['jobma_catcher_parent'] != 0].groupby('jobma_catcher_parent')['number_of_kits'].sum()
+    final_df.loc[final_df['jobma_catcher_id'].isin(sub_kits_sum.index), 'number_of_kits'] += final_df['jobma_catcher_id'].map(sub_kits_sum)
 
-    return final_df, compare_df
+    # For Invitations
+    sub_invitations_sum = final_df[final_df['jobma_catcher_parent'] != 0].groupby('jobma_catcher_parent')['number_of_invitations'].sum()
+    final_df.loc[final_df['jobma_catcher_id'].isin(sub_kits_sum.index), 'number_of_invitations'] += final_df['jobma_catcher_id'].map(sub_invitations_sum)
+    
+    # For Job Posted
+    sub_job_posted_sum = final_df[final_df['jobma_catcher_parent'] != 0].groupby('jobma_catcher_parent')['job_posted'].sum()
+    final_df.loc[final_df['jobma_catcher_id'].isin(sub_job_posted_sum.index), 'job_posted'] += final_df['jobma_catcher_id'].map(sub_job_posted_sum)
+
+    # For Recorded Interviews
+    sub_recorded_sum = final_df[final_df['jobma_catcher_parent'] != 0].groupby('jobma_catcher_parent')['number_of_recorded_interviews'].sum()
+    final_df.loc[final_df['jobma_catcher_id'].isin(sub_recorded_sum.index), 'number_of_recorded_interviews'] += final_df['jobma_catcher_id'].map(sub_recorded_sum)
+
+    # For Live Interviews
+    sub_live_sum = final_df[final_df['jobma_catcher_parent'] != 0].groupby('jobma_catcher_parent')['number_of_live_interviews'].sum()
+    final_df.loc[final_df['jobma_catcher_id'].isin(sub_live_sum.index), 'number_of_live_interviews'] += final_df['jobma_catcher_id'].map(sub_live_sum)
+
+    # For Minimum Login Days
+    login_order = {
+        'Less than 1 Week':0,
+        '1-4 Weeks':1,
+        '1-3 Months':2,
+        '3-6 Months':3,
+        '6-12 Months':4,
+        'More than 1 Year':5
+    }
+
+    final_df['days_since_last_login'] = final_df['days_since_last_login'].map(login_order).fillna(5).astype(int)
+    sub_min_login = final_df[final_df['jobma_catcher_parent'] != 0].groupby('jobma_catcher_parent')['days_since_last_login'].min()
+    final_df.loc[final_df['jobma_catcher_id'].isin(sub_min_login.index), 'days_since_last_login'] = final_df.loc[final_df['jobma_catcher_id'].isin(sub_min_login.index), 'jobma_catcher_id'].map(sub_min_login)
+    
+
+    verified_df = final_df[final_df['jobma_verified'] == 1].copy()
+    df = verified_df[verified_df['jobma_catcher_parent'] == 0].copy()
+    df.drop('jobma_catcher_parent', axis=1, inplace=True)
+    
+    compare_df = df.copy()
+    df.drop('jobma_catcher_id', axis=1, inplace=True)
+
+    print(f"Final merged df shape is {df.shape}")
+
+    return df, compare_df
 
 # This Function is to fill all missing values
 def fill_missing_values(final_df):
     final_df = final_df.copy()
     fill_values = {
         'is_premium': 0,
-        'subscription_status': 1,
+        'jobma_verified': 0,
+        'subscription_status': 0,
         'company_size': 'More than 1000',
-        'total_sub': 0,
         'is_unlimited': 1,
         'subscription_amount_in_dollars': 0,
         'number_of_subscriptions': 0,
@@ -152,18 +191,20 @@ def fill_missing_values(final_df):
         'number_of_kits': 0,
         'number_of_recorded_interviews': 0,
         'number_of_live_interviews': 0,
-        'days_since_last_login': 'More than 1 Year'
+        'days_since_last_login': 'More than 1 Year',
+        'total_sub': 0,
     }
     return final_df.fillna(fill_values)
 
 # Data Encoding 
 def ordinal_encoder(df):
-    ordinal_col = ['company_size', 'days_since_last_login']
+    # ordinal_col = ['company_size', 'days_since_last_login']
+    ordinal_col = ['company_size']
     company_size_order = ['1-25', '26-100', '101-500', '500-1000', 'More than 1000']
-    login_days_order = ['Less than 1 Week', '1-4 Weeks', '1-3 Months', '3-6 Months', '6-12 Months', 'More than 1 Year']
+    # login_days_order = ['Less than 1 Week', '1-4 Weeks', '1-3 Months', '3-6 Months', '6-12 Months', 'More than 1 Year']
 
-    total_order = [company_size_order, login_days_order]
-    ordinal = OrdinalEncoder(categories=total_order)
+    # total_order = [company_size_order, login_days_order]
+    ordinal = OrdinalEncoder(categories=[company_size_order])
 
     encoded = ordinal.fit_transform(df[ordinal_col].astype(str))
     # encoded += 1
@@ -244,7 +285,6 @@ class PreprocessingTransformer(BaseEstimator, TransformerMixin):
         return X
 
 # Pipelines
-
 merge_pipeline = Pipeline([
     ('merge', MergingTransformer(wallet_df=wallet_df,
                                  subscription_df=subscription_df,
@@ -381,18 +421,19 @@ latent_np = encoder.cpu().numpy()
 compare_df = merge_pipeline.named_steps['merge'].compare_df_
 
 user_pref_good = {'is_premium':0,
-             'subscription_status':0,
-             'company_size':'101-500',
-            'total_sub':1,
-             'is_unlimited':0,
-             'subscription_amount_in_dollars': 100.00,
-             'number_of_subscriptions':1,
-             'number_of_invitations':25,
-             'job_posted':4,
-             'number_of_kits':7,
-             'number_of_recorded_interviews':8,
-            'number_of_live_interviews':5,
-            'days_since_last_login':'6-12 Months'
+                  'jobma_verified': 1,
+                 'subscription_status':0,
+                 'company_size':'101-500', 
+                 'is_unlimited':0,
+                 'subscription_amount_in_dollars': 100.00,
+                 'number_of_subscriptions':1,
+                 'number_of_invitations':25,
+                 'job_posted':4,
+                 'number_of_kits':7,
+                 'number_of_recorded_interviews':8,
+                'number_of_live_interviews':5,
+                'days_since_last_login':4,
+                'total_sub':1,
             }
 
 def recommend(user_input, model, latent_embeddings, compare_df, pipeline, top_k=5):
@@ -430,18 +471,19 @@ result = recommend(user_pref_good, model_1, latent_np, compare_df, preprocess_pi
 print(result)
 
 user_pref_test = {'is_premium':1,
-             'subscription_status':1,
-             'company_size':'1-25',
-             'total_sub':2,
-             'is_unlimited':1,
-             'subscription_amount_in_dollars': 125.0,
-             'number_of_subscriptions':1,
-             'number_of_invitations':18,
-             'job_posted':3,
-             'number_of_kits':3,
-             'number_of_recorded_interviews':3,
-            'number_of_live_interviews':1,
-            'days_since_last_login':'More than 1 Year'
+                  'jobma_verified': 1,
+                 'subscription_status':1,
+                 'company_size':'1-25',
+                 'is_unlimited':1,
+                 'subscription_amount_in_dollars': 125.0,
+                 'number_of_subscriptions':1,
+                 'number_of_invitations':18,
+                 'job_posted':3,
+                 'number_of_kits':3,
+                 'number_of_recorded_interviews':3,
+                'number_of_live_interviews':1,
+                'days_since_last_login':4,
+                'total_sub':2
             }
 
 result1 = recommend(user_pref_test, model_1, latent_np, compare_df, preprocess_pipeline, top_k=10)
