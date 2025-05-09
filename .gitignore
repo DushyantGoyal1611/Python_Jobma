@@ -24,3 +24,8 @@ chatenv
 myenv
 venv
 .env
+
+# Binary files
+*.pkl
+*.pth
+*.joblib
