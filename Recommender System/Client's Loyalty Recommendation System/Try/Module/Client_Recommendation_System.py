@@ -487,7 +487,6 @@ def train_and_save_model():
     print("Model and Embeddings Saved")
 
 def predict(user_input, n=5):
-    # Load the fitted full pipeline (merge + preprocess)
     with open('full_pipeline.pkl', 'rb') as f:
         full_pipeline = pickle.load(f)
 
@@ -495,10 +494,8 @@ def predict(user_input, n=5):
     merge_pipeline = full_pipeline.named_steps['merge_pipeline']
     preprocess_pipeline = full_pipeline.named_steps['preprocess_pipeline']
 
-    # Fit merge_pipeline again on current DB (if needed to get compare_df)
-    merge_pipeline.fit(create_df(create_connection(), catcher_only=True))
-    _ = merge_pipeline.transform(create_df(create_connection(), catcher_only=True))
-    compare_df = merge_pipeline.named_steps['merge'].compare_df_
+    # access compare_df using .csv file instead of fetching it from database
+    compare_df = pd.read_csv('compare_df.csv')
 
     # Transform user input only with preprocessing pipeline
     sample_input = pd.DataFrame([user_input])
@@ -527,7 +524,7 @@ def predict(user_input, n=5):
         similarities = F.cosine_similarity(user_embedding, latent_embeddings_tensor, dim=1)
         top_indices = similarities.topk(n).indices.cpu().numpy()
 
-    # Prepare final recommendation DataFrame
+    # Final Recommendation DataFrame
     recommended = compare_df.iloc[top_indices].copy()
     recommended['similarity'] = similarities[top_indices].cpu().numpy()
 
