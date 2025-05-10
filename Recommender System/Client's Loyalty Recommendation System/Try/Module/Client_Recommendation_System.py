@@ -70,7 +70,7 @@ def create_df(engine,catcher_only=False):
     print("kit DF")
     kit_df = pd.read_sql('Select catcher_id AS jobma_catcher_id FROM job_assessment_kit', con=engine)
     print('Login DF')
-    login_df = pd.read_sql('Select jobma_role_id, jobma_user_id AS jobma_catcher_id, jobma_last_login FROM jobma_login',con=engine)
+    login_df = pd.read_sql("Select jobma_role_id, jobma_user_id AS jobma_catcher_id, jobma_last_login FROM jobma_login where jobma_role_id = 3",con=engine)
     # Closing the Connection
     engine.dispose()
     return wallet_df,subscription_df,invitation_df,job_posting_df,kit_df,login_df
@@ -110,7 +110,7 @@ def fetching_subscription_df(subscription_df):
 # login_df
 def fetching_login_df(login_df):
     print("Processing login DF")
-    login_df = login_df[login_df['jobma_role_id'] == 3].copy()
+    # login_df = login_df[login_df['jobma_role_id'] == 3].copy()
     login_df.rename(columns={'jobma_user_id': 'jobma_catcher_id'}, inplace=True)
 
     # Calculating Number of Gaps between last login and today
@@ -215,9 +215,14 @@ def merging_df(catcher_df, wallet_df, subscription_df, invitation_df, job_postin
     #     'More than 1 Year':5
     # }
 
+    # For Login
     final_df['activity_duration'] = final_df['activity_duration'].map(login_order).fillna(5).astype(int)
     sub_min_login = final_df[final_df['jobma_catcher_parent'] != 0].groupby('jobma_catcher_parent')['activity_duration'].min()
-    final_df.loc[final_df['jobma_catcher_id'].isin(sub_min_login.index), 'activity_duration'] = final_df.loc[final_df['jobma_catcher_id'].isin(sub_min_login.index), 'jobma_catcher_id'].map(sub_min_login)
+    catcher_mask = final_df['jobma_catcher_id'].isin(sub_min_login.index)
+    final_df.loc[catcher_mask, 'activity_duration'] = np.minimum(
+        final_df.loc[catcher_mask, 'activity_duration'],
+        final_df.loc[catcher_mask, 'jobma_catcher_id'].map(sub_min_login)
+    )
 
     verified_df = final_df[final_df['jobma_verified'] == 1].copy()
     df = verified_df[verified_df['jobma_catcher_parent'] == 0].copy()
