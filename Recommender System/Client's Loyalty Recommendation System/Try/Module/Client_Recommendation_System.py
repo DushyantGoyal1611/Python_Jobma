@@ -19,11 +19,24 @@ from sklearn.base import BaseEstimator, TransformerMixin
 # Pipeline
 from sklearn.pipeline import Pipeline
 import pickle
-from joblib import dump,load
 
+
+# Code Starts from here ------------------------------------------------------------------------------------------------------------------------------------
+
+# Ignores the Warnings
 warnings.filterwarnings('ignore')
+
 # Loading .env file into my python code
 load_dotenv()
+
+login_order = {
+        'Less than 1 Week':0,
+        '1-4 Weeks':1,
+        '1-3 Months':2,
+        '3-6 Months':3,
+        '6-12 Months':4,
+        'More than 1 Year':5
+    }
 
 def create_connection():
     print('creating connection with DB')
@@ -47,17 +60,17 @@ def create_df(engine,catcher_only=False):
         catcher_df = pd.read_sql('Select jobma_catcher_id, is_premium, jobma_catcher_parent, jobma_verified, subscription_status, company_size FROM jobma_catcher', con=engine) 
         return catcher_df
     print("Wallet DF")
-    wallet_df = pd.read_sql('Select catcher_id, is_unlimited FROM wallet', con=engine)
+    wallet_df = pd.read_sql('Select catcher_id AS jobma_catcher_id, is_unlimited FROM wallet', con=engine)
     print("Subscription DF")
-    subscription_df = pd.read_sql('Select catcher_id, currency, subscription_amount FROM subscription_history', con=engine)
+    subscription_df = pd.read_sql('Select catcher_id AS jobma_catcher_id, currency, subscription_amount FROM subscription_history', con=engine)
     print("Invitation DF")
     invitation_df = pd.read_sql('Select jobma_catcher_id, jobma_interview_mode, jobma_interview_status FROM jobma_pitcher_invitations', con=engine)
     print("Job posting DF")
     job_posting_df = pd.read_sql('Select jobma_catcher_id FROM jobma_employer_job_posting', con=engine)
     print("kit DF")
-    kit_df = pd.read_sql('Select catcher_id FROM job_assessment_kit', con=engine)
+    kit_df = pd.read_sql('Select catcher_id AS jobma_catcher_id FROM job_assessment_kit', con=engine)
     print('Login DF')
-    login_df = pd.read_sql('Select jobma_role_id, jobma_user_id, jobma_last_login FROM jobma_login',con=engine)
+    login_df = pd.read_sql('Select jobma_role_id, jobma_user_id AS jobma_catcher_id, jobma_last_login FROM jobma_login',con=engine)
     # Closing the Connection
     engine.dispose()
     return wallet_df,subscription_df,invitation_df,job_posting_df,kit_df,login_df
@@ -193,14 +206,14 @@ def merging_df(catcher_df, wallet_df, subscription_df, invitation_df, job_postin
     final_df.loc[final_df['jobma_catcher_id'].isin(sub_to_parent_sum.index), 'interview_completed'] += final_df['jobma_catcher_id'].map(sub_to_parent_sum).fillna(0).astype(int)
 
     # For Minimum Login Days
-    login_order = {
-        'Less than 1 Week':0,
-        '1-4 Weeks':1,
-        '1-3 Months':2,
-        '3-6 Months':3,
-        '6-12 Months':4,
-        'More than 1 Year':5
-    }
+    # login_order = {
+    #     'Less than 1 Week':0,
+    #     '1-4 Weeks':1,
+    #     '1-3 Months':2,
+    #     '3-6 Months':3,
+    #     '6-12 Months':4,
+    #     'More than 1 Year':5
+    # }
 
     final_df['activity_duration'] = final_df['activity_duration'].map(login_order).fillna(5).astype(int)
     sub_min_login = final_df[final_df['jobma_catcher_parent'] != 0].groupby('jobma_catcher_parent')['activity_duration'].min()
@@ -491,15 +504,15 @@ def predict(user_input, n=5):
         full_pipeline = pickle.load(f)
 
     # Extract pipelines
-    merge_pipeline = full_pipeline.named_steps['merge_pipeline']
     preprocess_pipeline = full_pipeline.named_steps['preprocess_pipeline']
 
     # access compare_df using .csv file instead of fetching it from database
     compare_df = pd.read_csv('compare_df.csv')
 
     # Transform user input only with preprocessing pipeline
-    sample_input = pd.DataFrame([user_input])
-    transformed_input = preprocess_pipeline.transform(sample_input)
+    user_df = pd.DataFrame([user_input])
+    transformed_input = preprocess_pipeline.transform(user_df)
+    print(f'Transformed User Input Type is: {type(transformed_input)}')
 
     # Load trained model
     input_shape = transformed_input.shape[1]
@@ -510,25 +523,89 @@ def predict(user_input, n=5):
     # Load latent embeddings
     with open('latent_np.pkl', 'rb') as embeddings_file:
         embeddings = pickle.load(embeddings_file)
-
+    print(f'Embedding Type is {type(embeddings)}')
+    
     # Generate user embedding
-    user_tensor = torch.tensor(transformed_input, dtype=torch.float32)
     with torch.no_grad():
-        user_embedding, _ = model_1(user_tensor)
+        user_embedding, _ = model_1(transformed_input)
         user_embedding = F.normalize(user_embedding, p=2, dim=1)
+        print(f'User Embedding Type is: {type(user_embedding)}')
 
         latent_embeddings_tensor = torch.tensor(embeddings, dtype=torch.float32)
-        latent_embeddings_tensor = F.normalize(latent_embeddings_tensor, p=2, dim=1)
+        latent_embeddings = F.normalize(latent_embeddings_tensor, p=2, dim=1)
+        print(f'Latent Embedding Type is {type(latent_embeddings)}')
 
         # Compute cosine similarity and get top-N
-        similarities = F.cosine_similarity(user_embedding, latent_embeddings_tensor, dim=1)
+        similarities = F.cosine_similarity(user_embedding, latent_embeddings, dim=1)
         top_indices = similarities.topk(n).indices.cpu().numpy()
 
     # Final Recommendation DataFrame
     recommended = compare_df.iloc[top_indices].copy()
+    
+    # To show the actual activity duration
+    recommended['activity_duration'] = recommended['activity_duration'].replace({v:k for k,v in login_order.items()})
+
+    # To show the Similarity Score
     recommended['similarity'] = similarities[top_indices].cpu().numpy()
 
     print(recommended)
+
+# Expecting catcher_id to fetch all the details of user
+
+def predict_using_catcher_id(catcher_id, n=5):
+    with open('full_pipeline.pkl', 'rb') as f:
+        full_pipeline = pickle.load(f)
+
+    # Extract Pipelines
+    preprocess_pipeline = full_pipeline.named_steps['preprocess_pipeline']
+    compare_df = pd.read_csv('compare_df.csv')
+
+    user_row = compare_df[compare_df['jobma_catcher_id'] == catcher_id]
+
+    if user_row.empty:
+        raise ValueError(f"No data found for catcher_id: {catcher_id}")
+
+    user_input = user_row.drop(columns=['jobma_catcher_id']).iloc[0].to_dict()
+    user_df = pd.DataFrame([user_input])
+    transformed_input = preprocess_pipeline.transform(user_df)
+    print(f'Transformed User Input Type is: {type(transformed_input)}')
+
+    # Load trained model
+    input_shape = transformed_input.shape[1]
+    model_1 = AutoEncoder(input_shape)
+    model_1.load_state_dict(torch.load('model.pth'))
+    model_1.eval()
+
+     # Load latent embeddings
+    with open('latent_np.pkl', 'rb') as embeddings_file:
+        embeddings = pickle.load(embeddings_file)
+    print(f'Embedding Type is {type(embeddings)}')
+    
+    # Generate user embedding
+    with torch.no_grad():
+        user_embedding, _ = model_1(transformed_input)
+        user_embedding = F.normalize(user_embedding, p=2, dim=1)
+        print(f'User Embedding Type is: {type(user_embedding)}')
+
+        latent_embeddings_tensor = torch.tensor(embeddings, dtype=torch.float32)
+        latent_embeddings = F.normalize(latent_embeddings_tensor, p=2, dim=1)
+        print(f'Latent Embedding Type is {type(latent_embeddings)}')
+
+        # Compute cosine similarity and get top-N
+        similarities = F.cosine_similarity(user_embedding, latent_embeddings, dim=1)
+        top_indices = similarities.topk(n).indices.cpu().numpy()
+
+    # Final Recommendation DataFrame
+    recommended = compare_df.iloc[top_indices].copy()
+
+    # To show the actual activity duration
+    recommended['activity_duration'] = recommended['activity_duration'].replace({v:k for k,v in login_order.items()})
+
+    # To show the Similarity Score
+    recommended['similarity'] = similarities[top_indices].cpu().numpy()
+
+    print(recommended)
+
 
 user_pref_good = {'is_premium':0,
                  'subscription_status':0,
@@ -563,8 +640,14 @@ user_pref_test = {'is_premium':1,
             }
 
 # Starting training the model
-train_and_save_model()
+# train_and_save_model()
 
 # Making Predictions (Recommendations)
+
+# Using full dictionary
 predict(user_pref_good, 5)
 predict(user_pref_test, 5)
+
+# Using only catcher id
+predict_using_catcher_id(6025, 5)
+predict_using_catcher_id(6189, 5)
