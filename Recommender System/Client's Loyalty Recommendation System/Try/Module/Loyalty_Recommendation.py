@@ -773,12 +773,12 @@ user_pref_test = {
             }
 
 # Training starts here ===========================================>
-# train_and_save_model()
+train_and_save_model()
 
 # # Recommendations (Predictions)
-predict(user_pref_good, 5)
-predict(user_pref_test, 5)
+# predict(user_pref_good, 5)
+# predict(user_pref_test, 5)
 
-# Using Catcher Id
-predict_using_catcher_id(6025, 5)
-predict_using_catcher_id(6189, 5)
+# # Using Catcher Id
+# predict_using_catcher_id(6025, 5)
+# predict_using_catcher_id(6189, 5)
