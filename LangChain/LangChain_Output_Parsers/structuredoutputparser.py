@@ -27,3 +27,19 @@ chain = template | model | parser
 
 result = chain.invoke({'topic':'black hole'})
 print(result)
+
+"""
+Limitations:-
+Doesn't provide Data Validation
+
+In LangChain’s StructuredOutputParser, the data validation problem refers to how strictly and reliably the model-generated output matches the schema you define.
+
+When the output:
+
+Doesn’t follow the exact JSON format
+
+Misses required fields
+
+Has wrong types (e.g., string instead of int)
+LangChain raises a OutputParserException.
+"""
