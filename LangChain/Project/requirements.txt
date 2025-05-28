@@ -1,0 +1,28 @@
+# Core LangChain
+langchain
+langchain-core
+
+# LangChain integrations
+langchain-community
+langchain-google-genai
+
+# LLM Providers
+google-generativeai
+transformers
+
+# Vector Store & Embedding Utilities
+faiss-cpu
+tiktoken
+
+# YouTube transcript extraction
+youtube-transcript-api
+
+# ML & utilities
+numpy
+scikit-learn
+
+# Environment Variable Management
+python-dotenv
+
+# Web App (optional for frontend)
+streamlit
