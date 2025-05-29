@@ -19,6 +19,7 @@ Thumbs.db
 
 # Ignore .pdf files
 *.pdf
+*.docx
 
 # Ignore .sql files
 *.sql

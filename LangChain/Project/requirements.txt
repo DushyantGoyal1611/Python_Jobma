@@ -14,6 +14,12 @@ transformers
 faiss-cpu
 tiktoken
 
+# Document Loaders
+unstructured  # For UnstructuredWordDocumentLoader (Word, PDFs, etc.)
+
+# Web Search Tool
+duckduckgo-search
+
 # YouTube transcript extraction
 youtube-transcript-api
 
