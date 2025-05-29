@@ -118,8 +118,8 @@ while True:
         break
 
     response = main_chain.invoke(user_input)
-
-    if ("insufficient_context" in response.lower() or "don't have enough information" in response.lower() or "i don't know" in response.lower()):
+    fallback_triggers = ["insufficient", "context", "not sure", "i don't know", "not enough information"]
+    if any(kw in response.lower() for kw in fallback_triggers):
         print("Fallback Triggered: Using Available AI Agent for external info... ")
         final_response = agent.invoke(HumanMessage(content=user_input))
         chat_history.append(HumanMessage(content=user_input))
