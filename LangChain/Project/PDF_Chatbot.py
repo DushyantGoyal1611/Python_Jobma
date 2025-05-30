@@ -1,9 +1,10 @@
 import os
+import re
 import warnings
 from dotenv import load_dotenv
 
 # LangChain related libraries
-from langchain_community.document_loaders import PyPDFLoader, UnstructuredWordDocumentLoader
+from langchain_community.document_loaders import PyPDFLoader, UnstructuredWordDocumentLoader, TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.tools import DuckDuckGoSearchRun
@@ -28,6 +29,8 @@ def extract_document(file_path):
             loader = PyPDFLoader(file_path)
         elif ext == '.docx':
             loader = UnstructuredWordDocumentLoader(file_path)
+        elif ext == '.txt':
+            loader = TextLoader(file_path, encoding="utf-8")
         else:
             raise ValueError("Unsupported file format. Please upload a PDF or DOCX file.")
 
@@ -43,7 +46,9 @@ def extract_document(file_path):
     
     return []
 
-docs = extract_document('llm-tutorial.pdf')
+# docs = extract_document('llm-tutorial.pdf')
+# docs = extract_document('dl-curriculum.docx')
+docs = extract_document('formatted_QA.txt')
 
 # Text Splitter
 splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
@@ -56,13 +61,39 @@ vector_store = FAISS.from_documents(chunks, embedding_model)
 # Retriever
 retriever = vector_store.as_retriever(search_type='similarity', search_tool={'k':4})
 
+# prompt = PromptTemplate(
+#     template="""
+# You are a helpful AI assistant.
+
+# Use the provided context below to answer the question.
+
+# If the context is missing or does not contain enough information to answer, respond exactly with:
+# INSUFFICIENT CONTEXT
+
+# Context:
+# {context}
+
+# Question:
+# {question}
+
+# Answer:
+# """,
+#     input_variables=["context", "question"]
+# )
+
 prompt = PromptTemplate(
     template="""
-You are a helpful AI assistant.
+You are a highly capable AI assistant trained to read and extract information from various document types, including .pdf, .docx, and .txt formats.
 
-Use the provided context below to answer the question.
+The documents may contain:
+- Headings and subheadings (especially in PDFs and DOCX)
+- Bullet points, numbered lists, and paragraphs
+- Tables or structured content (DOCX, PDF)
+- Plain text with minimal formatting (.txt)
 
-If the context is missing or does not contain enough information to answer, respond exactly with:
+Use the context provided below to answer the question **as accurately and concisely as possible**.
+
+If the context is irrelevant, insufficient, or does not contain the answer, respond only with:
 INSUFFICIENT CONTEXT
 
 Context:
@@ -82,7 +113,7 @@ llm = ChatGoogleGenerativeAI(model='gemini-2.0-flash', temperature=0.2)
 parser = StrOutputParser()
 
 def format_docs(retrieved_doc):
-    context_text = " ".join(doc.page_content for doc in retrieved_doc)
+    context_text = (docs for docs in retrieved_doc)
     return context_text
 
 parallel_chain = RunnableParallel({
@@ -110,20 +141,43 @@ agent = initialize_agent(
 
 # Chatbot
 
-chat_history = [SystemMessage(content="You are a helpful AI assistant.")]
+# chat_history = [SystemMessage(content="You are a helpful AI assistant.")]
+
+# while True:
+#     user_input = input('You:')
+#     if user_input.lower()  == 'exit':
+#         break
+
+#     response = main_chain.invoke(user_input)
+#     # fallback_triggers = ["insufficient", "context", "not sure", "i don't know", "not enough information"]
+#     fallback_triggers = r"(insufficient|not (sure|enough|understand)|i don't know|no context)"
+#     if re.search(fallback_triggers, response, re.IGNORECASE):
+#         print("Fallback Triggered: Using Available AI Agent for external info... ")
+#         final_response = llm.invoke([HumanMessage(content=user_input)])
+#         chat_history.append(HumanMessage(content=user_input))
+#         chat_history.append(final_response)
+#         print(f"AI (Fallback): {final_response.content}")
+#     else:
+#         chat_history.append(HumanMessage(content=user_input))
+#         chat_history.append(AIMessage(content=response))
+#         print(f"AI: {response}")
+
+chat_history = [SystemMessage(content='You are a helpful AI assistant')]
 
 while True:
-    user_input = input('You:')
-    if user_input.lower()  == 'exit':
+    user_input = input('You: ')
+    if user_input.lower() == 'exit':
         break
 
     response = main_chain.invoke(user_input)
-    fallback_triggers = ["insufficient", "context", "not sure", "i don't know", "not enough information"]
-    if any(kw in response.lower() for kw in fallback_triggers):
+
+    fallback_triggers = r"(insufficient|not (sure|enough|understand)|i don't know|no context)"
+    if re.search(fallback_triggers, response, re.IGNORECASE):
         print("Fallback Triggered: Using Available AI Agent for external info... ")
-        final_response = agent.invoke(HumanMessage(content=user_input))
         chat_history.append(HumanMessage(content=user_input))
-        chat_history.append(AIMessage(content=final_response["output"]))
+        final_response = agent.invoke(chat_history)
+        
+        chat_history.append(final_response)
         print(f"AI (Fallback): {final_response['output']}")
     else:
         chat_history.append(HumanMessage(content=user_input))
@@ -132,3 +186,6 @@ while True:
 
 print("Chat History:")
 print(chat_history)
+
+    
+

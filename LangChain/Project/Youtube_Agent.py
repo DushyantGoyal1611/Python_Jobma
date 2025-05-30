@@ -11,6 +11,7 @@ import re
 
 load_dotenv()
 
+# Function to extract video id from the youtube video link
 def extract_video_id(input_text):
     # If it's a raw video ID
     if re.fullmatch(r'[0-9A-Za-z_-]{11}', input_text):
