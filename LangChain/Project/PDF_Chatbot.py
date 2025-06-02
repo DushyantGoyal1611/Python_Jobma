@@ -61,26 +61,6 @@ vector_store = FAISS.from_documents(chunks, embedding_model)
 # Retriever
 retriever = vector_store.as_retriever(search_type='similarity', search_tool={'k':4})
 
-# prompt = PromptTemplate(
-#     template="""
-# You are a helpful AI assistant.
-
-# Use the provided context below to answer the question.
-
-# If the context is missing or does not contain enough information to answer, respond exactly with:
-# INSUFFICIENT CONTEXT
-
-# Context:
-# {context}
-
-# Question:
-# {question}
-
-# Answer:
-# """,
-#     input_variables=["context", "question"]
-# )
-
 prompt = PromptTemplate(
     template="""
 You are a highly capable AI assistant trained to read and extract information from various document types, including .pdf, .docx, and .txt formats.
