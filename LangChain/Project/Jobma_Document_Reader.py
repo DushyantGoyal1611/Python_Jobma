@@ -1,23 +1,17 @@
 import os
 import re
-import json
-import requests
 import warnings
-from datetime import datetime
 from dotenv import load_dotenv
 # LangChain related libraries
 # RAG Libraries
-from pydantic import BaseModel, Field
-from langchain_core.tools import tool, StructuredTool
 from langchain_community.llms import Ollama
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import PyPDFLoader, UnstructuredWordDocumentLoader, TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
-from langchain.agents import Tool, initialize_agent, AgentType
 # Memory
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
@@ -27,20 +21,6 @@ load_dotenv()
 
 # LLM
 # llm = Ollama(model="llama3.2")
-
-# def query_ollama(prompt):
-#     url = "http://localhost:11434/api/generate"
-#     payload = {
-#         "model": "llama3.2",  # This must match what you ran
-#         "prompt": prompt,
-#         "stream": False
-#     }
-
-#     response = requests.post(url, json=payload)
-#     return response.json()["response"]
-
-# reply = query_ollama("What is the Capital of India")
-# print(reply)
 
 # Prompt
 prompt = PromptTemplate(
@@ -130,7 +110,7 @@ def create_rag_chain(doc, prompt):
 def ask_ai():
     # LLM
     llm = Ollama(model="llama3.2")
-    
+
     chat_history = [SystemMessage(content="You are a helpful AI Assistant")]
     chain = create_rag_chain('formatted_QA.txt', prompt)
     fallback_triggers = r"(insufficient|not (sure|enough|understand)|i don't know|no context)"
