@@ -12,6 +12,7 @@ transformers
 
 # Vector Store & Embedding Utilities
 faiss-cpu
+chromadb
 tiktoken
 
 # Document Loaders

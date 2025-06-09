@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 
 # LangChain related libraries
 # Gemini
-from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 # RAG Libraries
+from langchain_core.tools import tool
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader, UnstructuredWordDocumentLoader, TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -29,7 +29,7 @@ load_dotenv()
 @tool
 def calculation(a:int):
     """This function will solve any mathematical query"""
-    return a**2
+    return a**4
 
 # Prompt
 # Optimized Prompt
@@ -79,6 +79,8 @@ def extract_document(file_path):
         docs = loader.load()
         print(f'Loading {file_path} ......')
         print('Loading Successful')
+
+        
         return docs
 
     except FileNotFoundError as fe:
